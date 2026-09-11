@@ -1,6 +1,5 @@
 import "server-only";
-import { promises as fs } from "fs";
-import * as path from "path";
+import { readAsset, readFont } from "./store";
 import {
   PDFDocument,
   PDFEmbeddedPage,
@@ -22,9 +21,6 @@ const INK = rgb(0.1, 0.1, 0.12);
 const NAVY = rgb(0.086, 0.161, 0.31);
 const MUTE = rgb(0.42, 0.45, 0.5);
 const LINE = rgb(0.8, 0.83, 0.88);
-
-const ASSETS = path.resolve(process.cwd(), "assets");
-const FONTS = path.join(ASSETS, "fonts");
 
 export interface LetterheadInput {
   beaconCode: string;
@@ -85,42 +81,19 @@ const DEFAULT_LAYOUT = {
   },
 };
 
-// Only successful font reads are cached — a miss stays retryable so dropping
-// a font file in later takes effect on the very next request, no restart.
-const fontCache: Record<string, Buffer> = {};
-
 async function layout() {
   let merged = DEFAULT_LAYOUT;
   try {
-    const raw = JSON.parse(await fs.readFile(path.join(ASSETS, "verify-layout.json"), "utf8"));
-    merged = deepMerge(DEFAULT_LAYOUT, raw);
+    const raw = await readAsset("verify-layout.json");
+    if (raw) merged = deepMerge(DEFAULT_LAYOUT, JSON.parse(raw.toString("utf8")));
   } catch {
     /* use defaults */
   }
   return merged;
 }
 
-async function asset(name: string): Promise<Buffer | null> {
-  try {
-    return await fs.readFile(path.join(ASSETS, name));
-  } catch {
-    return null;
-  }
-}
-
-async function fontFile(name: string): Promise<Buffer | null> {
-  if (fontCache[name]) return fontCache[name];
-  for (const ext of [".ttf", ".otf", ".TTF", ".OTF"]) {
-    try {
-      const buf = await fs.readFile(path.join(FONTS, name + ext));
-      fontCache[name] = buf;
-      return buf;
-    } catch {
-      /* try next */
-    }
-  }
-  return null;
-}
+const asset = readAsset;
+const fontFile = readFont;
 
 // ------------------------------------------------------------------ letterhead
 export async function renderLetterhead(input: LetterheadInput): Promise<Buffer> {

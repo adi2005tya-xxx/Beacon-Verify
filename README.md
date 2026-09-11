@@ -1,8 +1,9 @@
 # Beacon Verify
 
 Standalone internal tool for planner onboarding. Three tools around one planner
-that lives only in your browser tab — **nothing is stored on the server**
-except the running Beacon Code counter (`.verify/counter`).
+that lives only in your browser tab — the only things persisted anywhere are
+the brand assets (letterhead, certificate, fonts) and the running Beacon Code
+counter.
 
 1. **Details & Letterhead** — upload the planner's "BEACON PLANNER DETAILS"
    DOC/DOCX, review the auto-extracted fields (accept/reject each — never
@@ -27,25 +28,28 @@ routes together (`src/app/api/verify/*`).
 
 ## Deploying (Vercel)
 
-Vercel's serverless functions have a **read-only filesystem**, so the local
-counter file doesn't work there — `/api/verify/code` will 500 until you add a
-Redis store for it:
+Vercel's serverless functions have a **read-only filesystem** — the local
+`assets/` folder and counter file only work for local dev. On Vercel:
 
-1. Vercel project → **Storage** tab → **Marketplace** → add **"Upstash for
-   Redis"** (free tier). This auto-adds `KV_REST_API_URL` / `KV_REST_API_TOKEN`
-   (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) to your project's
-   environment variables.
+1. Project → **Storage** tab → **Create Database** → **Blob** (free tier, one
+   click — auto-adds `BLOB_READ_WRITE_TOKEN`, nothing to copy/paste).
 2. **Settings → Environment Variables** → add `VERIFY_PIN` (any PIN you choose)
-   if you want the app gated — see `src/middleware.ts`.
+   to gate the app — see `src/middleware.ts`.
 3. Redeploy.
+4. Visit `your-app.vercel.app/admin` (behind the PIN) and upload the
+   letterhead, certificate, stamp, and fonts through the browser — there's no
+   disk to drop files onto in production, so this replaces manually copying
+   files into `assets/`.
 
-Without a Redis store configured, `/api/verify/code` returns a clear error
-telling you to add one, instead of a bare 500.
+Without Blob configured, `/api/verify/code` returns a clear error telling you
+to add it, instead of a bare 500. (If you already have Redis set up from an
+earlier version of this project, that still works too — see `beaconCode.ts`.)
 
 ## Brand assets
 
-See `assets/README.md` — drop `letterhead.pdf`, `certificate.png`, and the two
-font files in there; positions are tunable via `assets/verify-layout.json`
+Locally: drop files straight into `assets/` (see `assets/README.md`) — or use
+the same `/admin` upload page, which works locally too (writing to that
+folder instead of Blob). Positions are tunable via `assets/verify-layout.json`
 without touching code.
 
 ## Notes
