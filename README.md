@@ -22,8 +22,25 @@ npm install
 npm run dev       # http://localhost:3500
 ```
 
-No database, no auth, no external services required. One Next.js app —
-frontend and API routes together (`src/app/api/verify/*`).
+No database, no auth required locally. One Next.js app — frontend and API
+routes together (`src/app/api/verify/*`).
+
+## Deploying (Vercel)
+
+Vercel's serverless functions have a **read-only filesystem**, so the local
+counter file doesn't work there — `/api/verify/code` will 500 until you add a
+Redis store for it:
+
+1. Vercel project → **Storage** tab → **Marketplace** → add **"Upstash for
+   Redis"** (free tier). This auto-adds `KV_REST_API_URL` / `KV_REST_API_TOKEN`
+   (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) to your project's
+   environment variables.
+2. **Settings → Environment Variables** → add `VERIFY_PIN` (any PIN you choose)
+   if you want the app gated — see `src/middleware.ts`.
+3. Redeploy.
+
+Without a Redis store configured, `/api/verify/code` returns a clear error
+telling you to add one, instead of a bare 500.
 
 ## Brand assets
 
