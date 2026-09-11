@@ -14,9 +14,13 @@ const PREFIX = "beacon-verify";
  * click, auto-injects the token). Locally, or if Blob isn't configured, it
  * falls back to the `assets/` folder on disk — so the same admin upload page
  * works in both places.
+ * Newer Vercel Blob stores authenticate via OIDC + BLOB_STORE_ID instead of a
+ * long-lived BLOB_READ_WRITE_TOKEN — the @vercel/blob SDK picks either up
+ * automatically from the environment, so either variable being present means
+ * Blob is usable.
  */
 export function blobConfigured(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 }
 
 async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
