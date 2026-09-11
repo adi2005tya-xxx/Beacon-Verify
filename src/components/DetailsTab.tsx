@@ -38,7 +38,17 @@ export function DetailsTab({
       fd.append("file", file);
       const r = await apiForm<{ fields: Extracted[]; plannerType: string | null }>("/api/verify/extract", fd);
       setExtracted(r.fields);
-      setDetectedType(r.plannerType);
+
+      // Planner type is decided from the document, not asked up front: use the
+      // checkbox the doc marks if present, otherwise infer from whether any
+      // business-registration fields were found (firm-only in the letterhead).
+      const hasRegistrationFields = r.fields.some((f) => ["regType", "regNumber", "regName"].includes(f.key));
+      const inferredType = r.plannerType ?? (hasRegistrationFields ? "ESTABLISHED_FIRM" : null);
+      setDetectedType(inferredType);
+      if (inferredType && inferredType !== planner.plannerType) {
+        setPlanner({ ...planner, plannerType: inferredType as Planner["plannerType"] });
+      }
+
       if (!r.fields.length) flash("No recognisable fields found in that file", "err");
     } catch (e: any) {
       flash(e.message || "Extraction failed", "err");
@@ -178,6 +188,11 @@ export function DetailsTab({
             )}
           </div>
           <div className="max-h-[60vh] overflow-y-auto p-2">
+            {detectedType && (
+              <p className="mb-1 rounded-md bg-emerald-50 px-2 py-1.5 text-[10px] font-semibold text-emerald-700">
+                Planner type set to {detectedType === "FREELANCE_INDIVIDUAL" ? "Freelance / Individual" : "Established Firm"} — detected from the document.
+              </p>
+            )}
             {!extracted ? (
               <p className="px-2 py-6 text-center text-[11px] text-slate-400">
                 Upload a document to see extracted fields here.
@@ -186,11 +201,6 @@ export function DetailsTab({
               <p className="px-2 py-6 text-center text-[11px] text-slate-400">All extracted fields handled.</p>
             ) : (
               <>
-                {detectedType && (
-                  <p className="mb-1 px-2 text-[10px] font-semibold text-slate-400">
-                    Detected type: {detectedType === "FREELANCE_INDIVIDUAL" ? "Freelance / Individual" : "Established Firm"}
-                  </p>
-                )}
                 <ul className="space-y-1">
                   {extracted.map((f) => {
                     const current = planner.values[f.key];
